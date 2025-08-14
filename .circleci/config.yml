@@ -1,0 +1,65 @@
+version: 2.1
+jobs:
+  test:
+    docker:
+      - image: cimg/python:3.11
+    steps:
+      - checkout
+      - run: pip install -r requirements.txt && pytest -q
+
+  build_and_push:
+    docker:
+      - image: cimg/base:stable
+    steps:
+      - checkout
+      - setup_remote_docker
+      - run:
+          name: Build and push image
+          command: |
+            echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
+            SHORT_SHA=$(echo "$CIRCLE_SHA1" | cut -c1-7)
+            IMAGE="$DOCKERHUB_USERNAME/hello-flask"
+            docker build -t $IMAGE:latest -t $IMAGE:$SHORT_SHA .
+            docker push $IMAGE:latest
+            docker push $IMAGE:$SHORT_SHA
+
+  deploy_k8s:
+    docker:
+      - image: cimg/base:stable
+    steps:
+      - checkout
+      - run:
+          name: Install kubectl
+          command: |
+            curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+            chmod +x kubectl
+            sudo mv kubectl /usr/local/bin/
+      - run:
+          name: Write kubeconfig
+          command: |
+            echo "$KUBE_CONFIG" | base64 -d > kubeconfig
+      - run:
+          name: Deploy to Kubernetes
+          command: |
+            export KUBECONFIG=$PWD/kubeconfig
+            sed -i "s#your-dockerhub-username#${DOCKERHUB_USERNAME}#g" k8s/deployment.yaml
+            IMAGE="$DOCKERHUB_USERNAME/hello-flask:$(echo $CIRCLE_SHA1 | cut -c1-7)"
+            kubectl apply -f k8s/deployment.yaml
+            kubectl apply -f k8s/service.yaml
+            kubectl set image deployment/hello-flask hello-flask=$IMAGE
+            kubectl rollout status deployment/hello-flask --timeout=120s
+
+workflows:
+  version: 2
+  ci_cd:
+    jobs:
+      - test
+      - build_and_push:
+          requires:
+            - test
+      - deploy_k8s:
+          requires:
+            - build_and_push
+          filters:
+            branches:
+              only: main

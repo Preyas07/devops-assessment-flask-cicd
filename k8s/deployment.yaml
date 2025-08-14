@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hello-flask
+  labels:
+    app: hello-flask
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: hello-flask
+  template:
+    metadata:
+      labels:
+        app: hello-flask
+    spec:
+      containers:
+        - name: hello-flask
+          image: your-dockerhub-username/hello-flask:latest
+          ports:
+            - containerPort: 8000
+          env:
+            - name: GIT_SHA
+              value: "unknown" # Overridden by image tag in rollout step
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 8000
+            initialDelaySeconds: 3
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 10

@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+.env
+.env.*
+.venv/
+.vscode/
+devops-assessment-flask-cicd.zip
