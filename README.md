@@ -108,35 +108,6 @@ Then open:
 http://<EC2_PUBLIC_IP>:30080/
 http://<EC2_PUBLIC_IP>:30080/healthz
 ```
-
----
-
-## 5) 5‑Minute Walkthrough Video Script
-
-**0:00 – 0:30** — Intro & goal  
-- “I’ll show a tiny Flask app shipped via CI/CD to Kubernetes.”
-
-**0:30 – 1:30** — Code & tests  
-- Show `app/app.py` and `tests/test_app.py`
-- Run `pytest` locally (or show in CI logs)
-
-**1:30 – 2:30** — Containerization  
-- `Dockerfile` (gunicorn, port 8000)  
-- `docker-compose.yml` for local run
-
-**2:30 – 4:00** — Pipeline  
-- GitHub Actions: test → build → push (→ deploy if `KUBE_CONFIG` present)  
-- Mention CircleCI config that mirrors the flow
-
-**4:00 – 5:00** — Deploy & verify  
-- Show rollout logs in CI  
-- Hit `/<healthz>` and root URL on `http://<EC2_IP>:30080/`  
-- Wrap up with “how I’d improve this next”:
-  - add IaC (Terraform) for infra
-  - add Prometheus/Grafana for monitoring
-  - add blue/green or canary with Argo Rollouts
-  - add SAST/Trivy scans in CI
-
 ---
 
 ## Troubleshooting
@@ -147,6 +118,6 @@ http://<EC2_PUBLIC_IP>:30080/healthz
 
 ---
 
-## Credits
 
-Built for a quick DevOps assessment demo. Enjoy and customize!
+
+
