@@ -10,7 +10,7 @@ DOCKERHUB_USERNAME="${DOCKERHUB_USERNAME:-youruser}"
 IMAGE_TAG="${1:-latest}"
 IMAGE="$DOCKERHUB_USERNAME/hello-flask:$IMAGE_TAG"
 
-sed -i "s#your-dockerhub-username#${DOCKERHUB_USERNAME}#g" k8s/deployment.yaml
+sed -i "s#preyas07#${DOCKERHUB_USERNAME}#g" k8s/deployment.yaml
 kubectl apply -f k8s/deployment.yaml
 kubectl apply -f k8s/service.yaml
 kubectl set image deployment/hello-flask hello-flask="$IMAGE"
