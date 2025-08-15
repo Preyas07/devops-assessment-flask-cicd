@@ -1,66 +1,40 @@
-name: CI/CD to EKS
+name: CI/CD to k3s
 
 on:
   push:
-    branches: [ main ]
-
-env:
-  AWS_REGION: us-east-2
-  EKS_CLUSTER_NAME: devops-assessment
-  IMAGE_NAME: your-dockerhub-username/hello-flask
+    branches:
+      - main
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+    - name: Checkout repo
+      uses: actions/checkout@v3
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+    - name: Log in to Docker Hub
+      uses: docker/login-action@v2
+      with:
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: Log in to DockerHub
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+    - name: Build and push Docker image
+      run: |
+        IMAGE_NAME=${{ secrets.DOCKER_USERNAME }}/devops-assessment-flask
+        docker build -t $IMAGE_NAME:latest .
+        docker push $IMAGE_NAME:latest
 
-      - name: Get short SHA
-        id: vars
-        run: echo "SHORT_SHA=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
+    - name: Set up kubeconfig
+      run: |
+        mkdir -p $HOME/.kube
+        echo "${{ secrets.KUBECONFIG_BASE64 }}" | base64 -d > $HOME/.kube/config
 
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          push: true
-          tags: |
-            ${{ env.IMAGE_NAME }}:latest
-            ${{ env.IMAGE_NAME }}:${{ env.SHORT_SHA }}
+    - name: Update image in k8s manifests
+      run: |
+        sed -i "s|image: .*|image: ${{ secrets.DOCKER_USERNAME }}/devops-assessment-flask:latest|g" k8s/deployment.yaml
 
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
-
-      - name: Update kubeconfig for EKS
-        run: |
-          aws eks update-kubeconfig --region $AWS_REGION --name $EKS_CLUSTER_NAME
-
-      - name: Install kubectl
-        run: |
-          curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
-          chmod +x kubectl
-          sudo mv kubectl /usr/local/bin/
-
-      - name: Deploy to EKS
-        run: |
-          sed -i "s#your-dockerhub-username#${{ secrets.DOCKER_USERNAME }}#g" k8s/deployment.yaml
-          kubectl apply -f k8s/deployment.yaml
-          kubectl apply -f k8s/service.yaml
-          kubectl set image deployment/hello-flask hello-flask=${{ env.IMAGE_NAME }}:${{ env.SHORT_SHA }}
-          kubectl rollout status deployment/hello-flask --timeout=120s
+    - name: Deploy to k3s
+      run: |
+        kubectl apply -f k8s/
 

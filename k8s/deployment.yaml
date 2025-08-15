@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
         - name: hello-flask
-          image: your-dockerhub-username/hello-flask:latest
+          image: preyas07/hello-flask:latest
           ports:
             - containerPort: 8000
           env:
